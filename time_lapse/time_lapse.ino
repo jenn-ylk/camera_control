@@ -71,8 +71,8 @@ void loop() {
 
 // Shutter Control
 void activate_shutter() {
-  Serial.print("Shutter, timestamp=");
-  Serial.println(last_clock_read);
+  // Serial.print("Shutter, timestamp=");
+  // Serial.println(last_clock_read);
   digitalWrite(LED_BUILTIN, HIGH);
   digitalWrite(SHUTTER, HIGH);
   delay(SHUTTER_PERIOD);
@@ -82,27 +82,23 @@ void activate_shutter() {
 }
 
 void a_fall() {
-  // detachInterrupt(digitalPinToInterrupt(ENC_B));
   a_state = !a_state;
   if (timeset_mode != SET_PERIOD && a_state != b_state) {
-    Serial.println("increasing");
+    // Serial.println("increasing");
     new_period_seconds += pow(60, timeset_mode);
     new_period_seconds += min(new_period_seconds, 60 * 60 * 24);
   }
-  display_time(new_period_seconds);
-  // attachInterrupt(digitalPinToInterrupt(ENC_B), b_fall, FALLING);
+  // display_time(new_period_seconds);
 }
 
 void b_fall() {
-  // detachInterrupt(digitalPinToInterrupt(ENC_A));
   b_state = !b_state;
   if (timeset_mode != SET_PERIOD && a_state != b_state) {
-    Serial.println("decreasing");
+    // Serial.println("decreasing");
     new_period_seconds -= pow(60, timeset_mode);
     new_period_seconds = max(0, new_period_seconds);
   }
-  display_time(new_period_seconds);
-  // attachInterrupt(digitalPinToInterrupt(ENC_A), a_fall, FALLING);
+  // display_time(new_period_seconds);
 }
 
 
@@ -119,11 +115,11 @@ void encoder_button() {
   // TODO: extra step to either set the new time or cancel?? - see once oled stuff is in
   if (timeset_mode == SET_PERIOD) {
     period_seconds = new_period_seconds;
-    Serial.println("Set new period:");
-    display_time(period_seconds);
+    // Serial.println("Set new period:");
+    // display_time(period_seconds);
   }
-  Serial.print("Encoder pressed new mode = ");
-  Serial.println(timeset_mode);
+  // Serial.print("Encoder pressed new mode = ");
+  // Serial.println(timeset_mode);
 
   return;
 }
