@@ -12,17 +12,20 @@ volatile int encoderValue = 0;
 #define ENC_B 17
 #define ENC_INDICATOR  18
 
+// tune s.t. sharp-ish changes in direction aren't an issue too often, but importantly that slow, careful turns aren't an issue either (timing out before other pin is brushed)
+#define RESET_STATE_DELAY 200
+
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(ENC_INDICATOR, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
   digitalWrite(ENC_INDICATOR, LOW);
 
-  // last_encoder_timestamp = millis();
+  last_encoder_timestamp = millis();
   attachInterrupt(digitalPinToInterrupt(ENC_A), a_fall, FALLING);
   attachInterrupt(digitalPinToInterrupt(ENC_B), b_fall, FALLING);
-  pinMode(ENC_A, INPUT_PULLUP);
-  pinMode(ENC_B, INPUT_PULLUP);
+  // pinMode(ENC_A, INPUT_PULLUP);
+  // pinMode(ENC_B, INPUT_PULLUP);
 }
 
 
@@ -30,18 +33,22 @@ void loop() {
 }
 
 void a_fall() {
+  if (millis() - last_encoder_timestamp >= RESET_STATE_DELAY) a_state = b_state = 0;
   a_state = !a_state;
   if (a_state != b_state) {
     encoderValue++;
     digitalWrite(ENC_INDICATOR, HIGH);
   }
+  last_encoder_timestamp = millis();
 }
 
 void b_fall() {
+  if (millis() - last_encoder_timestamp >= RESET_STATE_DELAY) a_state = b_state = 0;
   b_state = !b_state;
   if (a_state != b_state) {
     encoderValue--;
     digitalWrite(ENC_INDICATOR, LOW);
   }
+  last_encoder_timestamp = millis();
 }
 
