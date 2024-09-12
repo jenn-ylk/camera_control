@@ -11,6 +11,9 @@ volatile int b_state = 0;
 #define ENC_B 17
 #define ENC_BUTTON 19
 
+volatile uint32_t last_encoder_timestamp;
+#define RESET_STATE_DELAY 200
+
 enum time_setting {
   SECONDS,
   MINUTES,
@@ -21,8 +24,8 @@ enum time_setting {
 
 RTC_PCF8563 rtc;
 uint32_t last_clock_read;
-volatile uint32_t period_seconds = 6;
-volatile uint32_t new_period_seconds = period_seconds;
+volatile int32_t period_seconds = 6;
+volatile int32_t new_period_seconds = period_seconds;
 volatile unsigned int timeset_mode = SECONDS;
 
 void setup() {
@@ -32,12 +35,9 @@ void setup() {
   pinMode(SHUTTER, OUTPUT);
 
   // Set up encoder knob and button (interrupt driven for better response)
-  pinMode(ENC_A, INPUT_PULLUP);
-  pinMode(ENC_B, INPUT_PULLUP);
-  pinMode(ENC_BUTTON, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(ENC_A), a_fall, FALLING);
   attachInterrupt(digitalPinToInterrupt(ENC_B), b_fall, FALLING);
-  attachInterrupt(digitalPinToInterrupt(ENC_BUTTON), encoder_button, FALLING);
+  // attachInterrupt(digitalPinToInterrupt(ENC_BUTTON), encoder_button, FALLING);
 
   // Set up the RTC
   if (!rtc.begin()) {
@@ -47,14 +47,12 @@ void setup() {
   }
   if (!rtc.isrunning()) rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   last_clock_read = rtc.now().unixtime();
+
+  last_encoder_timestamp = millis();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-
   // Continually check the RTC time, each time the elapsed reaches the alarm period pulse XX and YY IO pins on (3.3V) (to short transistor switches to ground)
-
-
   uint32_t new_clock_read = rtc.now().unixtime();
   uint32_t elapsed = new_clock_read - last_clock_read;
 
@@ -63,6 +61,9 @@ void loop() {
 
     activate_shutter();
   }
+
+  display_time(period_seconds);
+  delay(1000);
 
 
   // Wire in the dial, one pin to button presses
@@ -74,31 +75,37 @@ void activate_shutter() {
   // Serial.print("Shutter, timestamp=");
   // Serial.println(last_clock_read);
   digitalWrite(LED_BUILTIN, HIGH);
-  digitalWrite(SHUTTER, HIGH);
+  // digitalWrite(SHUTTER, HIGH);
   delay(SHUTTER_PERIOD);
-  digitalWrite(SHUTTER, LOW);
-  delay(1000 - SHUTTER_PERIOD);
+  // digitalWrite(SHUTTER, LOW);
+  // delay(1000 - SHUTTER_PERIOD);
   digitalWrite(LED_BUILTIN, LOW);
 }
 
 void a_fall() {
+  if (millis() - last_encoder_timestamp >= RESET_STATE_DELAY) a_state = b_state = 0;
   a_state = !a_state;
-  if (timeset_mode != SET_PERIOD && a_state != b_state) {
-    // Serial.println("increasing");
+  if (a_state != b_state) {
+    digitalWrite(SHUTTER, HIGH);
     new_period_seconds += pow(60, timeset_mode);
-    new_period_seconds += min(new_period_seconds, 60 * 60 * 24);
+    new_period_seconds = min(new_period_seconds, 60 * 60 * 24);
   }
-  // display_time(new_period_seconds);
+  last_encoder_timestamp = millis();
+  // TODO: make this on button press
+  period_seconds = new_period_seconds;
 }
 
 void b_fall() {
+  if (millis() - last_encoder_timestamp >= RESET_STATE_DELAY) a_state = b_state = 0;
   b_state = !b_state;
-  if (timeset_mode != SET_PERIOD && a_state != b_state) {
-    // Serial.println("decreasing");
+  if (a_state != b_state) {
+    digitalWrite(SHUTTER, LOW);
     new_period_seconds -= pow(60, timeset_mode);
     new_period_seconds = max(0, new_period_seconds);
   }
-  // display_time(new_period_seconds);
+  last_encoder_timestamp = millis();
+  // TODO: make this only on the button press
+  period_seconds = new_period_seconds;
 }
 
 
