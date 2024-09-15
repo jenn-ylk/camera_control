@@ -43,11 +43,16 @@ volatile int32_t period_seconds = 6;
 volatile int32_t new_period_seconds = period_seconds;
 volatile unsigned int timeset_mode = SECONDS;
 
+int32_t display_seconds = period_seconds;
+unsigned int display_timeset_mode = timeset_mode;
+
 void setup() {
   // Set up output devices (Serial, LEDs, OLED, Camera Shutter)
   Serial.begin(9600);
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(SHUTTER, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
+  digitalWrite(SHUTTER, LOW);
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
@@ -55,13 +60,15 @@ void setup() {
     for(;;); // Don't proceed, loop forever
   }
   display.clearDisplay();
-  display_time_oled(period_seconds);
-
+  display_time_oled(display_seconds);
 
   // Set up encoder knob and button (interrupt driven for better response)
   attachInterrupt(digitalPinToInterrupt(ENC_A), a_fall, FALLING);
   attachInterrupt(digitalPinToInterrupt(ENC_B), b_fall, FALLING);
   attachInterrupt(digitalPinToInterrupt(ENC_BUTTON), encoder_button, FALLING);
+  // pinMode(ENC_A, INPUT_PULLUP);
+  // pinMode(ENC_B, INPUT_PULLUP);
+  // pinMode(ENC_BUTTON, INPUT_PULLUP);
 
   // Set up the RTC
   if (!rtc.begin()) {
@@ -77,19 +84,26 @@ void setup() {
 
 void loop() {
   // Continually check the RTC time, each time the elapsed reaches the alarm period pulse XX and YY IO pins on (3.3V) (to short transistor switches to ground)
-  uint32_t new_clock_read = rtc.now().unixtime();
-  uint32_t elapsed = new_clock_read - last_clock_read;
+  // TODO: Fix this to drive an interrupt, or otherwise not run so many updates
+  // uint32_t new_clock_read = rtc.now().unixtime();
+  // uint32_t elapsed = new_clock_read - last_clock_read;
 
-  if (elapsed >= period_seconds) {
-    last_clock_read = new_clock_read;
+  // if (elapsed >= period_seconds) {
+  //   last_clock_read = new_clock_read;
 
-    activate_shutter();
-  }
+  //   activate_shutter();
+  // }
 
   // Adding OLED writes seems to reduce reliability of counter state writes - potentially sharing pins, or overwriting memory?
-  display_time(new_period_seconds);
-  // display_time_oled(new_period_seconds);
-  delay(100);
+  if (
+    new_period_seconds != display_seconds ||
+    timeset_mode != display_timeset_mode
+  ) {
+    display_seconds = new_period_seconds;
+    display_timeset_mode = timeset_mode;
+    display_time(display_seconds);
+    display_time_oled(display_seconds);
+  }
 
 
   // Wire in the dial, one pin to button presses
