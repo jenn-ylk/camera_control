@@ -16,6 +16,7 @@ volatile int encoderValue = 0;
 #define RESET_STATE_DELAY 200
 
 void setup() {
+  Serial.begin(9600);
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(ENC_INDICATOR, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
@@ -30,6 +31,7 @@ void setup() {
 
 
 void loop() {
+  Serial.println(encoderValue);
 }
 
 void a_fall() {
